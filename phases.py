@@ -1,10 +1,10 @@
 from shapely.wkt import loads
 import shapely
 import math
-
+import scipy.optimize
 def load_phases(recipe):
 	# print recipe['phases']
-	for layer_number in xrange(1,recipe['layers']+1):
+	for layer_number in xrange(0,recipe['layers']):
 
 		layer_name='layer_'+str(layer_number)
 
@@ -30,19 +30,23 @@ def get_phase(recipe, layer, rho, P, T):
 
 	layer=recipe['layer_'+str(layer)]
 
-	if ((layer['type'].upper()=="LINDEMAN") and (rho is not None)):
+	if (layer['type'].upper()=="LINDEMAN"):
 		phaseindex={}
 		for i, phase in enumerate(layer['phases']):
 			phaseindex[phase['phase'].upper()]=i
 
 			if(phase['phase'].upper()=='SOLID'):
+
+				if(rho is None):
+					rho=phase['rho_0']
+
 				gamma_0=phase['gamma_0']
 				rho_0=phase['rho_0']
 				q=phase['q']
 				Tm_0=phase['Tm_0']
 				T_m=Tm_0*pow(rho_0/rho,2.0/3)*math.exp((2*gamma_0/q)*(1-pow(rho_0/rho,q)))
 
-		print "Melting Tempereature", rho, P, T, T_m
+		# print "Melting Tempereature", rho, P, T, T_m
 		if(T>=T_m):
 			return layer['phases'][phaseindex['LIQUID']]
 		else:
@@ -55,3 +59,15 @@ def get_phase(recipe, layer, rho, P, T):
 
 	print "Unknown phase or GEOM type is not found for layer "+str(layer)
 
+def vinet_density(P, phase):
+	return scipy.optimize.brentq(vinet_root,1.0,30000.0,(phase,P/pow(10,9)))
+
+def vinet_root(rho,phase,P):
+    K_0=phase['K_0']
+    Kp_0=phase['Kp_0']
+    rho_0=phase['rho_0']
+
+    # Gruneisen parameters and isothermal equations of stateGruneisen parameters and isothermal equations of state
+    # L. VOC ADLO, J.P. POIRER, AND G.D. PRICE
+
+    return 3*K_0*pow(rho/rho_0,2.0/3)*(1-pow(rho/rho_0,-1.0/3))*math.exp(1.5*(Kp_0-1)*(1-pow(rho/rho_0,-1.0/3)))-P
