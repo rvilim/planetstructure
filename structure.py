@@ -163,7 +163,7 @@ def structure_equations(y, x, recipe, phase, R, Temperature):
 	P=y[3]
 
 	alpha=phase['alpha']
-	gamma=phase['gamma_0']
+	gamma=phase['gamma_0']*pow(phase['rho_0']/rho,q)
 	rho_0=phase['rho_0']
 	K_0=phase['K_0']
 	Kp_0=phase['Kp_0']
