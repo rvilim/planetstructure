@@ -1,7 +1,7 @@
 from scipy.interpolate import interp1d
 
 def interp_solution(solution):
-	# This funtion takes in a solution profile and interpolates it for use in the T ode
+	# This function takes in a solution profile and interpolates it for use in the T ode
 
 	layer_num=0
 
