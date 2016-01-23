@@ -7,6 +7,7 @@ import phases
 import params
 import math
 import matplotlib.pyplot as plt
+from interp import interp_solution
 
 def structure(recipe, R):
 
@@ -28,6 +29,10 @@ def structure(recipe, R):
 	g=[]
 	m=[]
 	P=[]
+
+	a=[]
+
+
 	for layer in solution:
 		r=r+[a/1000.0 for a in layer['r']]
 		rho=rho+[y[0] for y in layer['y']]
@@ -61,7 +66,7 @@ def get_profile(recipe, R):
 
 	solution=[None]*2
 
-	for layer_number in xrange(0,recipe['layers']): #add this back in recipe['layers']+1):
+	for layer_number in xrange(0,recipe['layers']):
 		x=np.linspace(0, radius, 100)
 
 		layersbelow_mass=layersbelow_mass-recipe['layer_masses'][layer_number]
@@ -77,7 +82,6 @@ def get_profile(recipe, R):
 		solution[layer_number]['y']=layer_soln[1]
 		solution[layer_number]['r']=radius-layer_soln[0]
 
-		print layer_end_x
 		if(layer_number<recipe['layers']-1):
 			if(T is None):
 				phase=phases.get_phase(recipe, layer_number+1, None, P, 300)
@@ -90,16 +94,9 @@ def get_profile(recipe, R):
 			else:
 				print "Gimme time"
 
-				
-		# print radius, P, rho, g, m
-		#X print sol[0]
-		#y (list of list) sol[1]
-		# print sol[0]
-		# print stopping condition x sol[2]
+	# Interp all my fields for use in the temperature ODE
+	solution=interp_solution(solution)
 
-		# print stopping condition y sol[3]
-		# print stopping condition number? sol[4]
-		# print solution[0]
 	return solution
 
 def del_mass_event():
