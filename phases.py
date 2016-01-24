@@ -2,6 +2,8 @@ from shapely.wkt import loads
 import shapely
 import math
 import scipy.optimize
+import params
+
 def load_phases(recipe):
 	# print recipe['phases']
 	for layer_number in xrange(0,recipe['layers']):
@@ -14,7 +16,7 @@ def load_phases(recipe):
 
 	return recipe
 
-def get_phase(recipe, layer, rho, P, T):
+def get_phase(layer, rho, P, T):
 	# So this function is a bit complicated. It tries to return the correct phase for the
 	# current thermodynamic equations. It's complicated because we can either specify Lindeman
 	# phase relations (for calculating melting/solid) or a geom type (for calculating different
@@ -28,7 +30,7 @@ def get_phase(recipe, layer, rho, P, T):
 
 	point=shapely.geometry.Point(P/pow(10,9.0), T)
 
-	layer=recipe['layer_'+str(layer)]
+	layer=params.recipe['layer_'+str(layer)]
 
 	if (layer['type'].upper()=="LINDEMAN"):
 		phaseindex={}

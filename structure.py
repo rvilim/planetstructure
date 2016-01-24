@@ -8,23 +8,20 @@ import params
 import math
 import matplotlib.pyplot as plt
 from interp import interp_solution
-from materialproperties import K_S
+from materialproperties import get_K_S, get_gamma, get_Ra, get_param_avg, get_eta
 
-def structure(recipe, R):
+from scipy.interpolate import interp1d
 
-	M=recipe['mass']
+def structure(R):
 
-	solution=get_profile(recipe, R)
+	M=params.recipe['mass']
 
-	# for i in xrange(0,len(solution)):
+	solution=get_profile(R)
 
-	# 	for a in xrange(0,len(solution[i]['y'])):
-	# 		print solution[i]['y'][a][0]
+	# print solution
+	plot_solution(solution)
 
-
-	# print solution[0]['y']
-	# print solution[1]['y']
-
+def plot_solution(solution):
 	r=[]
 	rho=[]
 	g=[]
@@ -33,72 +30,110 @@ def structure(recipe, R):
 
 	a=[]
 
+	f, ((ax1, ax2),(ax3, ax4)) = plt.subplots(2, 2)
+	# ax1.hold(True)	
+
+	ax1.set_title('Rho')
+	ax2.set_title('g')
+	ax3.set_title('m (below)')
+	ax4.set_title('P')
+
+	# for layer in solution:
+	# 	r=r+[a/1000.0 for a in layer['r']]
+	# 	rho=rho+[y[0] for y in layer['y']]
+	# 	g=g+[y[1] for y in layer['y']]
+	# 	m=m+[y[2] for y in layer['y']]
+	# 	P=P+[y[3] for y in layer['y']]
+
+	# ax1.plot(r,rho)
+	# ax2.plot(r,g)
+	# ax3.plot(r,m)
+	# ax4.plot(r,P)
 
 	for layer in solution:
-		r=r+[a/1000.0 for a in layer['r']]
-		rho=rho+[y[0] for y in layer['y']]
-		g=g+[y[1] for y in layer['y']]
-		m=m+[y[2] for y in layer['y']]
-		P=P+[y[3] for y in layer['y']]
 
-	f, ((ax1, ax2),(ax3, ax4)) = plt.subplots(2, 2)
-	ax1.plot(r,rho)
-	ax1.set_title('Rho')
-	ax2.plot(r,g)
-	ax2.set_title('g')
-	ax3.plot(r,m)
-	ax3.set_title('m (below)')
-	ax4.plot(r,P)
-	ax4.set_title('P')
+		ax1.plot(layer['r'],layer['y_interp']['rho'](layer['r']))
+		ax2.plot(layer['r'],layer['y_interp']['g'](layer['r']))
+		ax3.plot(layer['r'],layer['y_interp']['m'](layer['r']))
+		ax4.plot(layer['r'],layer['y_interp']['P'](layer['r']))
 
 	plt.show()
 
-def get_profile(recipe, R):
-	M=recipe['mass']
+def get_profile(R):
+	M=params.recipe['mass']
 
 	g=params.G*M/pow(R,2.0)
-	P=recipe['P_surf'] 
+	P=params.recipe['P_surf'] 
 	T=None
-	phase=phases.get_phase(recipe, 0, None, P, recipe['T_surf'])
+	phase=phases.get_phase(0, None, P, params.recipe['T_surf'])
 	rho=phase['rho_0']
 
-	layersbelow_mass=recipe['mass']
+	layersbelow_mass=params.recipe['mass']
 	radius=R
 
 	solution=[None]*2
 
-	for layer_number in xrange(0,recipe['layers']):
-		x=np.linspace(0, radius, 100)
+	for layer_number in xrange(0,params.recipe['layers']):
 
-		layersbelow_mass=layersbelow_mass-recipe['layer_masses'][layer_number]
+		x=np.linspace(0, radius, params.layerpoints)
+
+		layersbelow_mass=layersbelow_mass-params.recipe['layer_masses'][layer_number]
 		define_mass_event(layersbelow_mass)
 
-		layer_soln=odelay(structure_equations, [rho,g,M,P], x, events=[mass_event], args=(recipe, phase, radius, False))
+		layer_solution=odelay(structure_equations, [rho,g,M,P], x, events=[mass_event], args=(phase, radius, False))
 
-		layer_end_x=layer_soln[2][0]
-		layer_end_conditions=layer_soln[3][0]
+		if(T is None):
+			# If this is our first iteration we don't have an initial temperature profile yet
+			# create a constant profile of temperature T_surf. 
+			# This means phase relations won't go insane in subsaquent steps
 
-		solution[layer_number]={}
-		solution[layer_number]['X']=layer_soln[0]
-		solution[layer_number]['y']=layer_soln[1]
-		solution[layer_number]['r']=radius-layer_soln[0]
+			T=np.zeros_like(layer_solution[0])+params.recipe['T_surf']
 
-		if(layer_number<recipe['layers']-1):
-			if(T is None):
-				phase=phases.get_phase(recipe, layer_number+1, None, P, 300)
+		solution[layer_number]=get_layer_properties(layer_solution, T, layer_number, radius)
 
-				radius=radius-layer_end_x
-				P=layer_end_conditions[3]
-				rho=phases.vinet_density(P, phase)
-				g=layer_end_conditions[1]
-				M=layer_end_conditions[2]
-			else:
-				print "Gimme time"
+		if(layer_number<params.recipe['layers']-1):
+			phase=phases.get_phase(layer_number+1, None, P, 300)
+
+			radius=solution[layer_number]['bottom_r']
+			P=solution[layer_number]['bottom_P']
+			rho=phases.vinet_density(P, phase)
+			g=solution[layer_number]['bottom_g']
+			M=solution[layer_number]['bottom_m']
 
 	# Interp all my fields for use in the temperature ODE
 	solution=interp_solution(solution)
 
 	return solution
+
+def get_layer_properties(layer_solution, T, layer_number, radius):
+	layer={}
+	layer['T']=T
+	layer['X']=layer_solution[0]
+	layer['y']=layer_solution[1]
+	layer['r']=radius-layer_solution[0]
+	layer['top_r']=radius
+	layer['bottom_r']=radius-layer_solution[2][0]
+	layer['bottom_rho']=layer_solution[3][0][0]
+	layer['bottom_g']=layer_solution[3][0][1]
+	layer['bottom_m']=layer_solution[3][0][2]
+	layer['bottom_P']=layer_solution[3][0][3]
+
+	layer['g_avg']=-np.trapz(layer['y'][:,1]*(layer['r']**2), x=layer['r'])*3.0/(layer['top_r']**3-layer['bottom_r']**3)
+	layer['rho_avg']=-np.trapz(layer['y'][:,0]*(layer['r']**2), x=layer['r'])*3.0/(layer['top_r']**3-layer['bottom_r']**3)
+
+
+	layer['alpha_avg']=get_param_avg(layer, layer_number, 'alpha')
+	layer['k_avg']=get_param_avg(layer, layer_number, 'k')
+	layer['kappa_avg']=get_param_avg(layer, layer_number, 'kappa')
+	layer['eta_avg']=get_param_avg(layer, layer_number, 'eta_0')
+
+
+	layer['Ra_avg']=get_Ra(layer, layer_number)
+	print 'Ra', layer['Ra_avg']
+
+	# print layer['g_avg'], layer['rho_avg'], layer['alpha_avg'], layer['k_avg'], layer['kappa_avg'], layer['eta_avg']
+
+	return layer
 
 def del_mass_event():
 	try:
@@ -134,20 +169,20 @@ def define_radius_event(x):
 
 	exec(radius_template % (x))
 
-def get_layer(recipe, m):
+def get_layer(m):
 
     layer=0
-    layer_masses=recipe['layer_masses'][layer]
-    m_above=recipe['mass']-m
+    layer_masses=params.recipe['layer_masses'][layer]
+    m_above=params.recipe['mass']-m
     
-    while layer<(recipe['layers']-1) and (m_above>layer_masses):
+    while layer<(params.recipe['layers']-1) and (m_above>layer_masses):
         layer=layer+1
-        layer_masses+=recipe['layer_masses'][layer]
+        layer_masses+=params.recipe['layer_masses'][layer]
 
     return layer+1
 
 
-def structure_equations(y, x, recipe, phase, R, Temperature):
+def structure_equations(y, x, phase, R, Temperature):
 	"""
 	y=[ rho
 	    g
@@ -163,19 +198,17 @@ def structure_equations(y, x, recipe, phase, R, Temperature):
 	P=y[3]
 
 	alpha=phase['alpha']
-	gamma=phase['gamma_0']*pow(phase['rho_0']/rho,phase['q'])
 	rho_0=phase['rho_0']
 	K_0=phase['K_0']
 	Kp_0=phase['Kp_0']
+	gamma=get_gamma(phase['gamma_0'], phase['rho_0'], rho, phase['q'])
 
 	if (Temperature is False):
-		# phase=phases.get_phase(recipe, layer_number, None, recipe['P_surf'], recipe['T_surf'])
-		phi=K_S(r, rho, rho_0, False, K_0, Kp_0, alpha, gamma)/rho
+		phi=get_K_S(r, rho, rho_0, False, K_0, Kp_0, alpha, gamma )/rho
 	else:
 		print "Gimme time"
 		# phi=K_S(r, rho, rho_0, T, K_0, Kp_0, alpha, gamma)/rho
 
-	# print str(x)+", "+phase['name']+", "+str(rho)+", "+str(g)+", "+str(m)+", "+str(P)
 
 	drhodx=-(-rho*g/(phi*pow(10,9)))
 	dgdx=-(4*np.pi*params.G*rho-2*params.G*m/pow(r,3))

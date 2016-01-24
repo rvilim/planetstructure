@@ -11,7 +11,7 @@ def interp_solution(solution):
 		m=interp1d(layer['r'], layer['y'][:,2], kind='cubic')
 		P=interp1d(layer['r'], layer['y'][:,3], kind='cubic')
 
-		solution[layer_num]['y_interp']=[rho,g,m,P]
+		solution[layer_num]['y_interp']={'rho':rho, 'g':g, 'm':m, 'P':P}
 
 		layer_num=layer_num+1
 
