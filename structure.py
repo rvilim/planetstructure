@@ -30,13 +30,14 @@ def plot_solution(solution):
 
 	a=[]
 
-	f, ((ax1, ax2),(ax3, ax4)) = plt.subplots(2, 2)
+	f, ((ax1, ax2),(ax3, ax4),(ax5,ax6)) = plt.subplots(3, 2)
 	# ax1.hold(True)	
 
 	ax1.set_title('Rho')
 	ax2.set_title('g')
 	ax3.set_title('m (below)')
 	ax4.set_title('P')
+	ax5.set_title('T')
 
 	# for layer in solution:
 	# 	r=r+[a/1000.0 for a in layer['r']]
@@ -56,6 +57,7 @@ def plot_solution(solution):
 		ax2.plot(layer['r'],layer['y_interp']['g'](layer['r']))
 		ax3.plot(layer['r'],layer['y_interp']['m'](layer['r']))
 		ax4.plot(layer['r'],layer['y_interp']['P'](layer['r']))
+		ax5.plot(layer['r'],layer['y_interp']['T'](layer['r']))
 
 	plt.show()
 
@@ -82,12 +84,12 @@ def get_profile(R):
 
 		layer_solution=odelay(structure_equations, [rho,g,M,P], x, events=[mass_event], args=(phase, radius, False))
 
-		if(T is None):
+		# if(T is None): # uncomment this when you have T solved for and indent the next line
 			# If this is our first iteration we don't have an initial temperature profile yet
 			# create a constant profile of temperature T_surf. 
 			# This means phase relations won't go insane in subsaquent steps
 
-			T=np.zeros_like(layer_solution[0])+params.recipe['T_surf']
+		T=np.zeros_like(layer_solution[0])+params.recipe['T_surf']
 
 		solution[layer_number]=get_layer_properties(layer_solution, T, layer_number, radius)
 
@@ -100,8 +102,11 @@ def get_profile(R):
 			g=solution[layer_number]['bottom_g']
 			M=solution[layer_number]['bottom_m']
 
-	# Interp all my fields for use in the temperature ODE
-	solution=interp_solution(solution)
+		# Interp all my fields for use in the temperature ODE
+		solution=interp_solution(solution)
+
+		# Toss to the temperature solver
+
 
 	return solution
 
@@ -127,9 +132,13 @@ def get_layer_properties(layer_solution, T, layer_number, radius):
 	layer['kappa_avg']=get_param_avg(layer, layer_number, 'kappa')
 	layer['eta_avg']=get_param_avg(layer, layer_number, 'eta_0')
 
-
 	layer['Ra_avg']=get_Ra(layer, layer_number)
-	print 'Ra', layer['Ra_avg']
+
+	layer['Ra_c']=get_Rac()
+	layer['top_bl']=get_boundary_layer()
+	layer['bottom_bl']=layer['top_bl']/2.0
+	
+	# print 'Ra', layer['Ra_avg']
 
 	# print layer['g_avg'], layer['rho_avg'], layer['alpha_avg'], layer['k_avg'], layer['kappa_avg'], layer['eta_avg']
 

@@ -64,5 +64,9 @@ def get_param_avg(layer_solution, layer_number, param):
 	return -np.trapz(param_vals*(layer_solution['r']**2), x=layer_solution['r'])*3.0/(layer_solution['top_r']**3-layer_solution['bottom_r']**3)
 
 
-
+def get_Rac():
+	return 1000.0
+	
+def get_boundary_layer():
+	return params.a*((layer_solution['top_r']-layer_solution['bottom_r'])/2.0)*pow(layer_solution['Ra_avg']/layer_solution['Ra_c'],-0.25)
 

@@ -1,4 +1,5 @@
 from scipy.interpolate import interp1d
+import numpy as np
 
 def interp_solution(solution):
 	# This function takes in a solution profile and interpolates it for use in the T ode
@@ -11,7 +12,10 @@ def interp_solution(solution):
 		m=interp1d(layer['r'], layer['y'][:,2], kind='cubic')
 		P=interp1d(layer['r'], layer['y'][:,3], kind='cubic')
 
-		solution[layer_num]['y_interp']={'rho':rho, 'g':g, 'm':m, 'P':P}
+		print np.shape(layer['r']),np.shape(layer['T'])
+		T=interp1d(layer['r'], layer['T'], kind='cubic')
+
+		solution[layer_num]['y_interp']={'rho':rho, 'g':g, 'm':m, 'P':P, 'T':T}
 
 		layer_num=layer_num+1
 
