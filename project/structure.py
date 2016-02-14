@@ -1,4 +1,3 @@
-# import scipy.integrate as integrate
 import matplotlib.pyplot as plt
 import numpy as np
 from pycse import odelay
@@ -80,13 +79,12 @@ def get_profile(R):
         layersbelow_mass = layersbelow_mass - params.recipe['layer_masses'][layer_number]
         define_mass_event(layersbelow_mass)
 
-        layer_solution = odelay(structure_equations, [rho, g, M, P], x, events=[mass_event],
-                                args=(phase, radius, False))
+        layer_solution = odelay(structure_equations, [rho, g, M, P], x, events=[mass_event], args=(phase, radius, False))
 
         # if(T is None): # uncomment this when you have T solved for and indent the next line
         # If this is our first iteration we don't have an initial temperature profile yet
         # create a constant profile of temperature T_surf.
-        # This means phase relations won't go insane in subsaquent steps
+        # This means phase relations won't go insane in subsequent steps
 
         T = np.zeros_like(layer_solution[0]) + params.recipe['T_surf']
 
@@ -134,17 +132,16 @@ def get_layer_properties(layer_solution, T, q_surf, layer_number, radius):
     layer['kappa_avg'] = get_param_avg(layer, layer_number, 'kappa')
     layer['eta_avg'] = get_param_avg(layer, layer_number, 'eta_0')
 
-    layer['Ra_avg'] = get_Ra(layer, layer_number)
+    if params.recipe['layer_'+str(layer_number)]['convecting']==True:
+        layer['Ra_avg'] = get_Ra(layer, layer_number)
+        layer['Ra_c'] = get_Rac()
+        layer['top_bl'] = get_boundary_layer(layer)
+        layer['bottom_bl'] = layer['top_bl'] / 2.0
+    else:
+        layer['Ra_avg']=-1.0
 
-    layer['Ra_c'] = get_Rac()
-    layer['top_bl'] = get_boundary_layer(layer)
-    layer['bottom_bl'] = layer['top_bl'] / 2.0
-
-    if (layer_number == 0):
+    if layer_number == 0:
         layer['q_surf'] = q_surf
-    # print 'Ra', layer['Ra_avg']
-
-    # print layer['g_avg'], layer['rho_avg'], layer['alpha_avg'], layer['k_avg'], layer['kappa_avg'], layer['eta_avg']
 
     return layer
 
@@ -161,25 +158,25 @@ def define_mass_event(m):
 
     mass_template = """
 def mass_event(Y,x):
-	rho, g, m, P = Y
-	value= m-%f
-	isterminal = True
-	direction  = 0
-	return value, isterminal, direction
-	"""
+    rho, g, m, P = Y
+    value= m-%f
+    isterminal = True
+    direction  = 0
+    return value, isterminal, direction
+"""
 
     exec (mass_template % (m)) in globals()
 
 
 def define_radius_event(x):
     radius_template = """
-		def radius_event(Y,x):
-			rho, g, m, P = Y
-			value= x-%f
-		    isterminal = True
-		    direction  = 0
-		    return value, isterminal, direction
-	"""
+def radius_event(Y,x):
+    rho, g, m, P = Y
+    value= x-%f
+    isterminal = True
+    direction  = 0
+    return value, isterminal, direction
+"""
 
     exec (radius_template % (x))
 

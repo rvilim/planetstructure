@@ -2,6 +2,7 @@ import numpy as np
 import params
 import phases
 
+
 def get_K_S(r, rho, rho_0, T, K_0, Kp_0, alpha, gamma):
     if T is False:
         return get_K_T(rho, rho_0, T, K_0, Kp_0, gamma) * (1 + alpha * gamma * 300.0)
