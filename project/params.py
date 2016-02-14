@@ -1,45 +1,51 @@
 import ConfigParser
-import os
 import json
+import os
+
 import phases
 
-G=0.0
-layerpoints=100
-recipe=None
+G = 0.0
+a = 1.0
+layerpoints = 100
+recipe = None
+
 
 def get_params(params_file, recipe_file):
-	global G
-	global recipe
-	global layerpoints
-	
-	parser=ConfigParser.ConfigParser()
+    global G
+    global recipe
+    global layerpoints
+    global a
 
-	params_filename="params.ini"
-	params_filepath=os.path.join(os.path.dirname(__file__),"params",params_filename)
-	parser.read(params_filepath)
+    parser = ConfigParser.ConfigParser()
 
-	G=float(parser.get('Constants', 'G'))
-	layerpoints=int(parser.get('Model', 'layerpoints'))
+    params_filename = "params.ini"
+    params_filepath = os.path.join(os.path.dirname(__file__), "params", params_filename)
+    parser.read(params_filepath)
 
-	recipe=get_recipe(recipe_file)
+    G = float(parser.get('Constants', 'G'))
+    a = float(parser.get('Model', 'a'))
+    layerpoints = int(parser.get('Model', 'layerpoints'))
 
-	# print recipe
-	
-	recipe=phases.load_phases(recipe)
+    recipe = get_recipe(recipe_file)
+
+    # print recipe
+
+    recipe = phases.load_phases(recipe)
 
 
 def get_recipe(recipe_file):
-	with open(recipe_file) as data_file:    
-		recipe = json.load(data_file)
+    with open(recipe_file) as data_file:
+        recipe = json.load(data_file)
 
-	return calc_recipe(recipe)
+    return calc_recipe(recipe)
+
 
 def calc_recipe(recipe):
-	# In here goes things that should be calculated from the recipe file
-	# and are completely determined by the recipe file
+    # In here goes things that should be calculated from the recipe file
+    # and are completely determined by the recipe file
 
-	# layer masses (calculatable from planetary mass and layer fracions)
+    # layer masses (calculatable from planetary mass and layer fracions)
 
-	recipe['layer_masses']=[recipe['mass']*fraction for fraction in recipe['layer_fractions']]
+    recipe['layer_masses'] = [recipe['mass'] * fraction for fraction in recipe['layer_fractions']]
 
-	return recipe
+    return recipe
